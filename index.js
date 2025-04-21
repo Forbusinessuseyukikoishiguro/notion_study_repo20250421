@@ -490,8 +490,9 @@ async function displayDatabaseContents() {
         csvContent += values.join(',') + '\n';
       });
       
-      // CSVファイルに保存
-      await fs.writeFile('database-contents.csv', csvContent, 'utf-8');
+      // BOM付きUTF-8で保存
+      const bom = '\uFEFF'; // BOM文字
+      await fs.writeFile('database-contents.csv', bom + csvContent, 'utf-8');
       console.log('データをCSV形式でも保存しました: database-contents.csv');
     } catch (error) {
       console.error('CSVエクスポートエラー:', error);
