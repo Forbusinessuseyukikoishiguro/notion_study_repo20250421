@@ -349,6 +349,9 @@ async function main() {
       await saveToFile(pageBlocks, 'page-blocks.json');
     }
     
+    // 処理完了前にデータベース内容を見やすく表示
+    await displayDatabaseContents();
+    
     console.log('処理が完了しました');
   } catch (error) {
     console.error('エラーが発生しました:', error);
@@ -357,3 +360,140 @@ async function main() {
 
 // メイン関数を実行
 main();
+
+// データベースの内容を読みやすく表示する関数
+async function displayDatabaseContents() {
+    try {
+      // ファイルから内容を読み込む
+      const fileContent = await fs.readFile('database-contents.json', 'utf-8');
+      const data = JSON.parse(fileContent);
+      
+      console.log('\n=========================================');
+      console.log(`データベース内容のサマリー (${data.results.length}件のレコード)`);
+      console.log('=========================================\n');
+      
+      // 各レコードの内容を表示
+      data.results.forEach((record, index) => {
+        console.log(`【レコード ${index + 1}】`);
+        
+        // タイトルを探す
+        const titleProp = Object.entries(record.properties).find(
+          ([_, prop]) => prop.type === 'title'
+        );
+        
+        if (titleProp) {
+          const [propName, propValue] = titleProp;
+          const title = propValue.title[0]?.plain_text || '無題';
+          console.log(`■ ${propName}: ${title}`);
+        }
+        
+        // その他のプロパティを表示
+        Object.entries(record.properties).forEach(([propName, propValue]) => {
+          if (propValue.type !== 'title') {
+            let displayValue = '';
+
+            // 修正されたプロパティタイプに応じた表示方法
+            switch (propValue.type) {
+              case 'title':
+                displayValue = propValue.title[0]?.plain_text || '';
+                break;
+              case 'rich_text':
+                displayValue = propValue.rich_text[0]?.plain_text || '';
+                break;
+              case 'select':
+                displayValue = propValue.select?.name || '';
+                break;
+              case 'multi_select':
+                displayValue = propValue.multi_select.map(item => item.name).join('; ');
+                break;
+              case 'date':
+                displayValue = propValue.date?.start || '';
+                break;
+              case 'checkbox':
+                displayValue = propValue.checkbox ? 'TRUE' : 'FALSE';
+                break;
+              case 'number':
+                displayValue = propValue.number !== null ? propValue.number.toString() : '';
+                break;
+              default:
+                displayValue = '';
+            }
+            
+            console.log(`□ ${propName}: ${displayValue}`);
+          }
+        });
+        
+        // ページURL
+        console.log(`□ URL: ${record.url}`);
+        console.log('----------------------------------------\n');
+      });
+      
+      // データベースの内容をCSV形式でも保存
+      await exportToCSV(data);
+      
+    } catch (error) {
+      console.error('データベース内容の表示エラー:', error);
+    }
+  }
+  
+  // データベースの内容をCSVとしてエクスポートする関数
+  async function exportToCSV(data) {
+    try {
+      if (!data.results || data.results.length === 0) {
+        console.log('エクスポートするデータがありません');
+        return;
+      }
+      
+      // 最初のレコードからプロパティ名を取得
+      const firstRecord = data.results[0];
+      const propertyNames = Object.keys(firstRecord.properties);
+      
+      // CSVヘッダー行を作成
+      let csvContent = propertyNames.join(',') + '\n';
+      
+      // 各レコードをCSVに変換
+      data.results.forEach(record => {
+        const values = propertyNames.map(propName => {
+          const prop = record.properties[propName];
+          let value = '';
+          
+          switch (prop.type) {
+            case 'title':
+              value = prop.title[0]?.plain_text || '';
+              break;
+            case 'rich_text':
+              value = prop.rich_text[0]?.plain_text || '';
+              break;
+            case 'select':
+              value = prop.select?.name || '';
+              break;
+            case 'multi_select':
+              value = prop.multi_select.map(item => item.name).join('; ');
+              break;
+            case 'date':
+              value = prop.date?.start || '';
+              break;
+            case 'checkbox':
+              value = prop.checkbox ? 'TRUE' : 'FALSE';
+              break;
+            case 'number':
+              value = prop.number !== null ? prop.number.toString() : '';
+              break;
+            default:
+              value = '';
+          }
+          
+          // CSVで問題となる文字をエスケープ
+          return `"${value.replace(/"/g, '""')}"`;
+        });
+        
+        csvContent += values.join(',') + '\n';
+      });
+      
+      // CSVファイルに保存
+      await fs.writeFile('database-contents.csv', csvContent, 'utf-8');
+      console.log('データをCSV形式でも保存しました: database-contents.csv');
+    } catch (error) {
+      console.error('CSVエクスポートエラー:', error);
+    }
+  }
