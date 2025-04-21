@@ -1,0 +1,66 @@
+{
+  "object": "database",
+  "id": "1dcfa3da-55e5-8047-8aab-d084daaf277c",
+  "cover": {
+    "type": "file",
+    "file": {
+      "url": "https://prod-files-secure.s3.us-west-2.amazonaws.com/46b4e1e9-b4a8-480b-a46d-aca8de816ee9/0d7521c2-a2ee-4d23-b347-9bb7c441253e/%E7%94%9F%E6%88%90AI%E7%94%BB%E5%83%8Fnote.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=ASIAZI2LB466UP7JKOPE%2F20250421%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20250421T101146Z&X-Amz-Expires=3600&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEDIaCXVzLXdlc3QtMiJHMEUCIQCWm7yo1WIUPyPOY%2FcDq1y0AvwXak1O2nxMdk2F4uVGEwIgbnAwI1nXTcPlPs%2BHbu1%2BYCB8OVsGQlRcwMSyQO83fXEqiAQIu%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARAAGgw2Mzc0MjMxODM4MDUiDIZzVVPB8%2Bn1QpwmOyrcA7wInmlHuPXGCRxavY9uuZXRbtcC2FRx7AaNdz6FFHuuzA1H3BaRleQiSBqzhg8DO5VkubrZd1iQypls3fiYJJC8OT0b8pi1HEzGD8B7kvk0XYmRBGWQtAf%2B1MVTZFhF5J%2FtSGrA1sQ7WMGe1lXzUKUAHMhvFEeHtSSl5CVkgv7HK8uov7cRc7Qq7I00Bss90S5btBs5r93TY0dGQD%2FAWujnFFytG%2FKY2y5AlWg3jbMnK0TyD9tQQODv932vmtThXO6zgyZ68VMFBP1hiLShl3arAVWCAHtV4nbNLpGnvUY0MucMuey5ADVRqcBpzTKmgf2N5l1ZpZiVr%2FzemJJIaYeoAof%2Fs%2FkSqL3ARj8k2IniqtcQs%2B8LMwMjRMW3yRHOwmhi6OEMZBUArsZd24cyeSrGWlVC0MhzqifYW9NHbDnJ1trq4Fcwy9nZyGJihS5KBeInsu3YNajd5MQWFyEeYwVVvSMVpYIy8oVOhtRLuV3hivTKDAJMeyp70BtZGfB0DNLmJdG%2Fo0N0n2l5v3ukE2UWJJDHPKH3L0IX1szS%2Br2cXX83Po7a9B0hbOZ2lrLHNKkRhb3GsBe9N%2B6t06ryeNXDMRy5ueCWjwGW9FokDZIFYWgqxkZrsLHei0GZMIygmMAGOqUB4zktC9IhNaubl5%2FqcFHuhu8dmW0mo8FLFcS8iF7MDhBTM80ovyRVN4SQnRfEcFyXFoyu899vIdTh8ZxhOkIgv0I3RvAwD%2F3iCPX1sWJhYWnY4Ke9JpwyNR3Yi4vWh96GGhKPYds5KFe2wx3oM4HTS3W7shWmsjS%2BWAb6edCr14MHSLOzDS5OAjkNDDYNRJ%2FbC3kf0Elrw5ot4qKrxBRydwkfWVdy&X-Amz-Signature=5219aa1fe387d6fa6a7e6606e763cbbe0f46a14a44616ef13224d31693f44c11&X-Amz-SignedHeaders=host&x-id=GetObject",
+      "expiry_time": "2025-04-21T11:11:46.285Z"
+    }
+  },
+  "icon": null,
+  "created_time": "2025-04-21T09:42:00.000Z",
+  "created_by": {
+    "object": "user",
+    "id": "148d872b-594c-812e-a486-0002fc2ab153"
+  },
+  "last_edited_by": {
+    "object": "user",
+    "id": "148d872b-594c-812e-a486-0002fc2ab153"
+  },
+  "last_edited_time": "2025-04-21T10:09:00.000Z",
+  "title": [
+    {
+      "type": "text",
+      "text": {
+        "content": "テストDByukikonote＿生成AIパスポート試験学習のDB",
+        "link": null
+      },
+      "annotations": {
+        "bold": false,
+        "italic": false,
+        "strikethrough": false,
+        "underline": false,
+        "code": false,
+        "color": "default"
+      },
+      "plain_text": "テストDByukikonote＿生成AIパスポート試験学習のDB",
+      "href": null
+    }
+  ],
+  "description": [],
+  "is_inline": false,
+  "properties": {
+    "description": {
+      "id": "tDy%3F",
+      "name": "description",
+      "type": "rich_text",
+      "rich_text": {}
+    },
+    "date": {
+      "id": "title",
+      "name": "date",
+      "type": "title",
+      "title": {}
+    }
+  },
+  "parent": {
+    "type": "workspace",
+    "workspace": true
+  },
+  "url": "https://www.notion.so/1dcfa3da55e580478aabd084daaf277c",
+  "public_url": null,
+  "archived": false,
+  "in_trash": false,
+  "request_id": "c11dfbf8-ca41-44ef-b56a-2f0a5d568452"
+}
