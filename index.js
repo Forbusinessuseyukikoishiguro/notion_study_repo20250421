@@ -3,12 +3,10 @@ require('dotenv').config(); // 環境変数を読み込むための設定
 const axios = require('axios'); // HTTP通信を行うためのライブラリ
 const readline = require('readline'); // コマンドラインで対話するためのモジュール
 
-
 // Notion APIの設定
 const NOTION_KEY = process.env.NOTION_KEY; // 環境変数からAPIキーを取得
 const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID; // 環境変数からデータベースIDを取得
 const NOTION_API_BASE = 'https://api.notion.com/v1'; // NotionのAPIのベースURL
-
 
 // APIリクエスト用の共通設定
 const notionClient = axios.create({
@@ -20,13 +18,11 @@ const notionClient = axios.create({
   }
 });
 
-
 // コンソールで対話するためのインターフェース設定
 const rl = readline.createInterface({
   input: process.stdin, // 標準入力
   output: process.stdout // 標準出力
 });
-
 
 // 質問をして回答を受け取るユーティリティ関数
 function askQuestion(question) {
@@ -36,7 +32,6 @@ function askQuestion(question) {
     });
   });
 }
-
 
 // エラーハンドリング関数
 function handleError(error) {
@@ -55,7 +50,6 @@ function handleError(error) {
   }
 }
 
-
 // データベースの内容を取得する関数
 async function getDatabaseContents() {
   try {
@@ -67,7 +61,6 @@ async function getDatabaseContents() {
     throw error;
   }
 }
-
 
 // ページを更新する関数
 async function updatePage(pageId, properties) {
@@ -83,7 +76,6 @@ async function updatePage(pageId, properties) {
   }
 }
 
-
 // ページを削除する関数（Notionでは実際にはアーカイブする）
 async function deletePage(pageId) {
   try {
@@ -98,7 +90,6 @@ async function deletePage(pageId) {
   }
 }
 
-
 // ページの詳細を取得する関数
 async function getPageDetails(pageId) {
   try {
@@ -110,7 +101,6 @@ async function getPageDetails(pageId) {
     throw error;
   }
 }
-
 
 // データベースのプロパティ情報を取得する関数
 async function getDatabaseProperties() {
@@ -124,31 +114,30 @@ async function getDatabaseProperties() {
   }
 }
 
-
 // メインの実行関数
 async function main() {
   try {
     console.log('Notionデータベース管理ツール');
     console.log('==========================');
-   
+    
     // データベースのプロパティ構造を取得
     const dbProperties = await getDatabaseProperties();
-   
+    
     // タイトルプロパティを特定（表示用）
     const titleProperty = Object.keys(dbProperties).find(
       key => dbProperties[key].type === 'title'
     );
-   
+    
     // データベースの内容を取得して表示
     console.log('\nデータベースの内容を取得中...');
     const pages = await getDatabaseContents();
-   
+    
     if (pages.length === 0) {
       console.log('データベースにページが見つかりませんでした。');
       rl.close();
       return;
     }
-   
+    
     // 取得したページを一覧表示
     console.log(`\n${pages.length}件のページが見つかりました:\n`);
     pages.forEach((page, index) => {
@@ -159,27 +148,27 @@ async function main() {
       }
       console.log(`${index + 1}. ${title} (ID: ${page.id})`);
     });
-   
+    
     // ユーザーにページ選択を促す
     const selectedIndex = parseInt(await askQuestion('\n操作するページの番号を入力してください: ')) - 1;
-   
+    
     if (isNaN(selectedIndex) || selectedIndex < 0 || selectedIndex >= pages.length) {
       console.log('無効な選択です。');
       rl.close();
       return;
     }
-   
+    
     const selectedPage = pages[selectedIndex];
-   
+    
     // 選択したページの詳細を表示
     console.log('\n選択したページの詳細:');
     const pageDetails = await getPageDetails(selectedPage.id);
-   
+    
     // ページのプロパティを表示
     console.log('\nプロパティ一覧:');
     Object.entries(pageDetails.properties).forEach(([key, value]) => {
       let displayValue = '';
-     
+      
       // プロパティタイプに応じた表示方法
       switch (value.type) {
         case 'title':
@@ -203,47 +192,47 @@ async function main() {
         default:
           displayValue = '(表示非対応の形式)';
       }
-     
+      
       console.log(`${key}: ${displayValue}`);
     });
-   
+    
     // 実行したい操作を選択
     console.log('\n実行できる操作:');
     console.log('1. ページを更新');
     console.log('2. ページを削除');
     console.log('3. キャンセル');
-   
+    
     const operation = await askQuestion('\n操作を選択してください (1-3): ');
-   
+    
     if (operation === '1') {
       // 更新操作
       console.log('\nページの更新を選択しました。');
-     
+      
       // 更新するプロパティを選択
       console.log('\n更新可能なプロパティ:');
-     
+      
       const editableProperties = Object.entries(dbProperties)
         .filter(([_, prop]) => ['title', 'rich_text', 'number', 'select', 'checkbox', 'date'].includes(prop.type))
         .map(([key, prop]) => ({ name: key, type: prop.type }));
-     
+      
       editableProperties.forEach((prop, index) => {
         console.log(`${index + 1}. ${prop.name} (タイプ: ${prop.type})`);
       });
-     
+      
       const propIndex = parseInt(await askQuestion('\n更新するプロパティの番号を入力してください: ')) - 1;
-     
+      
       if (isNaN(propIndex) || propIndex < 0 || propIndex >= editableProperties.length) {
         console.log('無効な選択です。');
         rl.close();
         return;
       }
-     
+      
       const propToUpdate = editableProperties[propIndex];
       let newValue = await askQuestion(`\n「${propToUpdate.name}」の新しい値を入力してください: `);
-     
+      
       // プロパティの値を更新するオブジェクトを作成
       const updateData = {};
-     
+      
       // プロパティタイプに応じた更新データの構築
       switch (propToUpdate.type) {
         case 'title':
@@ -277,17 +266,17 @@ async function main() {
           };
           break;
       }
-     
+      
       // ページを更新
       console.log('\nページを更新中...');
       await updatePage(selectedPage.id, updateData);
       console.log('ページを更新しました！');
-     
+      
     } else if (operation === '2') {
       // 削除操作
       console.log('\nページの削除を選択しました。');
       const confirmation = await askQuestion('本当に削除しますか？ (yes/no): ');
-     
+      
       if (confirmation.toLowerCase() === 'yes') {
         console.log('\nページを削除中...');
         await deletePage(selectedPage.id);
@@ -295,21 +284,19 @@ async function main() {
       } else {
         console.log('削除をキャンセルしました。');
       }
-     
+      
     } else {
       // キャンセル
       console.log('操作をキャンセルしました。');
     }
-   
+    
     rl.close();
-   
+    
   } catch (error) {
     console.error('エラーが発生しました:', error);
     rl.close();
   }
 }
 
-
 // メイン関数を実行
 main();
-// 更新削除基礎
