@@ -1,75 +1,73 @@
 // 必要なパッケージのインポート
-require('dotenv').config(); // 環境変数を読み込む
-const axios = require('axios'); // HTTP通信ライブラリ
-const fs = require('fs').promises; // ファイル操作用（ログ用）
+require('dotenv').config(); // 環境変数を読み込むための設定
+const axios = require('axios'); // HTTP通信を行うためのライブラリ
+const readline = require('readline'); // コマンドラインで対話するためのモジュール
 
 // Notion APIの設定
-const NOTION_KEY = process.env.NOTION_KEY;
-const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID;
-const NOTION_API_BASE = 'https://api.notion.com/v1';
+const NOTION_KEY = process.env.NOTION_KEY; // 環境変数からAPIキーを取得
+const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID; // 環境変数からデータベースIDを取得
+const NOTION_API_BASE = 'https://api.notion.com/v1'; // NotionのAPIのベースURL
 
 // APIリクエスト用の共通設定
 const notionClient = axios.create({
-  baseURL: NOTION_API_BASE,
+  baseURL: NOTION_API_BASE, // ベースURLの設定
   headers: {
-    'Authorization': `Bearer ${NOTION_KEY}`,
-    'Content-Type': 'application/json',
-    'Notion-Version': '2022-06-28' // 最新バージョンを使用
+    'Authorization': `Bearer ${NOTION_KEY}`, // 認証トークンの設定
+    'Content-Type': 'application/json', // コンテンツタイプをJSONに設定
+    'Notion-Version': '2022-06-28' // 使用するAPIのバージョン
   }
 });
 
-// エラーハンドラー関数
+// コンソールで対話するためのインターフェース設定
+const rl = readline.createInterface({
+  input: process.stdin, // 標準入力
+  output: process.stdout // 標準出力
+});
+
+// 質問をして回答を受け取るユーティリティ関数
+function askQuestion(question) {
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      resolve(answer);
+    });
+  });
+}
+
+// エラーハンドリング関数
 function handleError(error) {
   if (error.response) {
+    // APIからのレスポンスがあるエラー
     console.error('エラーレスポンス:', {
       status: error.response.status,
       data: error.response.data
     });
   } else if (error.request) {
+    // リクエストは送信されたがレスポンスがない
     console.error('レスポンスが受信できませんでした:', error.request);
   } else {
+    // リクエスト設定時に問題が発生
     console.error('エラー:', error.message);
   }
-  console.error('エラースタック:', error.stack);
 }
 
-// データベースの詳細を取得する関数
-async function getDatabase(databaseId) {
+// データベースの内容を取得する関数
+async function getDatabaseContents() {
   try {
-    const response = await notionClient.get(`/databases/${databaseId}`);
-    return response.data;
+    // データベースの内容をクエリ
+    const response = await notionClient.post(`/databases/${NOTION_DATABASE_ID}/query`);
+    return response.data.results; // データベースの内容を返す
   } catch (error) {
     handleError(error);
     throw error;
   }
 }
 
-// 新しいページを作成する関数
-async function createPage(databaseId, properties, content = null) {
+// ページを更新する関数
+async function updatePage(pageId, properties) {
   try {
-    const requestBody = {
-      parent: { database_id: databaseId },
+    // ページのプロパティを更新するPATCHリクエスト
+    const response = await notionClient.patch(`/pages/${pageId}`, {
       properties: properties
-    };
-
-    // コンテンツ（children）が指定されている場合は追加
-    if (content) {
-      requestBody.children = content;
-    }
-
-    const response = await notionClient.post('/pages', requestBody);
-    return response.data;
-  } catch (error) {
-    handleError(error);
-    throw error;
-  }
-}
-
-// ページにブロックを追加する関数
-async function appendBlocksToPage(pageId, blocks) {
-  try {
-    const response = await notionClient.patch(`/blocks/${pageId}/children`, {
-      children: blocks
     });
     return response.data;
   } catch (error) {
@@ -78,281 +76,225 @@ async function appendBlocksToPage(pageId, blocks) {
   }
 }
 
-// メイン関数
+// ページを削除する関数（Notionでは実際にはアーカイブする）
+async function deletePage(pageId) {
+  try {
+    // ページをアーカイブするPATCHリクエスト
+    const response = await notionClient.patch(`/pages/${pageId}`, {
+      archived: true // trueでアーカイブ（削除相当）
+    });
+    return response.data;
+  } catch (error) {
+    handleError(error);
+    throw error;
+  }
+}
+
+// ページの詳細を取得する関数
+async function getPageDetails(pageId) {
+  try {
+    // ページの詳細を取得するGETリクエスト
+    const response = await notionClient.get(`/pages/${pageId}`);
+    return response.data;
+  } catch (error) {
+    handleError(error);
+    throw error;
+  }
+}
+
+// データベースのプロパティ情報を取得する関数
+async function getDatabaseProperties() {
+  try {
+    // データベースの詳細を取得
+    const response = await notionClient.get(`/databases/${NOTION_DATABASE_ID}`);
+    return response.data.properties; // データベースのプロパティ構造を返す
+  } catch (error) {
+    handleError(error);
+    throw error;
+  }
+}
+
+// メインの実行関数
 async function main() {
   try {
-    // データベースIDの確認
-    if (!NOTION_DATABASE_ID) {
-      console.error('環境変数NOTION_DATABASE_IDが設定されていません。');
-      console.error('.envファイルを確認してください。');
-      return;
-    }
-
-    // データベースの詳細を取得
-    console.log(`データベース(${NOTION_DATABASE_ID})の詳細を取得中...`);
-    const dbDetails = await getDatabase(NOTION_DATABASE_ID);
-    console.log(`データベース「${dbDetails.title?.[0]?.plain_text || 'Untitled'}」の詳細を取得しました`);
-
-    // データベースのプロパティ構造を確認
-    const propertySchema = dbDetails.properties;
+    console.log('Notionデータベース管理ツール');
+    console.log('==========================');
     
-    // 新しいページのプロパティを動的に構築
-    const newPageProperties = {};
+    // データベースのプロパティ構造を取得
+    const dbProperties = await getDatabaseProperties();
     
-    // タイトルプロパティを見つける
-    const titleProperty = Object.keys(propertySchema).find(
-      key => propertySchema[key].type === 'title'
+    // タイトルプロパティを特定（表示用）
+    const titleProperty = Object.keys(dbProperties).find(
+      key => dbProperties[key].type === 'title'
     );
     
-    if (titleProperty) {
-      newPageProperties[titleProperty] = {
-        title: [{ text: { content: "NotionAPIで自動作成したページ" } }]
-      };
-    } else {
-      console.error('タイトルプロパティが見つかりません。ページを作成できません。');
+    // データベースの内容を取得して表示
+    console.log('\nデータベースの内容を取得中...');
+    const pages = await getDatabaseContents();
+    
+    if (pages.length === 0) {
+      console.log('データベースにページが見つかりませんでした。');
+      rl.close();
       return;
     }
     
-    // その他のプロパティを設定（必要に応じて）
-    Object.keys(propertySchema).forEach(key => {
-      const prop = propertySchema[key];
-      
-      // タイトル以外のプロパティを設定
-      if (key !== titleProperty) {
-        if (prop.type === 'select' && prop.select.options.length > 0) {
-          newPageProperties[key] = {
-            select: { name: prop.select.options[0].name }
-          };
-        } else if (prop.type === 'date') {
-          const today = new Date().toISOString().split('T')[0];
-          newPageProperties[key] = {
-            date: { start: today }
-          };
-        } else if (prop.type === 'rich_text') {
-          newPageProperties[key] = {
-            rich_text: [{ text: { content: "自動生成されたコンテンツ" } }]
-          };
-        } else if (prop.type === 'checkbox') {
-          newPageProperties[key] = {
-            checkbox: true
-          };
-        } else if (prop.type === 'number') {
-          newPageProperties[key] = {
-            number: 100
-          };
-        }
+    // 取得したページを一覧表示
+    console.log(`\n${pages.length}件のページが見つかりました:\n`);
+    pages.forEach((page, index) => {
+      // タイトルを取得して表示（ない場合は「無題」）
+      let title = '無題';
+      if (titleProperty && page.properties[titleProperty].title.length > 0) {
+        title = page.properties[titleProperty].title[0].plain_text;
       }
+      console.log(`${index + 1}. ${title} (ID: ${page.id})`);
     });
     
-    // ページコンテンツのブロックを定義
-    const pageContent = [
-      {
-        object: "block",
-        type: "heading_1",
-        heading_1: {
-          rich_text: [{ type: "text", text: { content: "自動作成されたNotionページ" } }]
-        }
-      },
-      {
-        object: "block",
-        type: "paragraph",
-        paragraph: {
-          rich_text: [
-            { 
-              type: "text", 
-              text: { 
-                content: "このページはNotionのAPIを使って自動的に作成されました。ブロックコンテンツも自動的に追加されています。" 
-              } 
-            }
-          ]
-        }
-      },
-      {
-        object: "block",
-        type: "divider",
-        divider: {}
-      },
-      {
-        object: "block",
-        type: "heading_2",
-        heading_2: {
-          rich_text: [{ type: "text", text: { content: "主な機能" } }]
-        }
-      },
-      {
-        object: "block",
-        type: "bulleted_list_item",
-        bulleted_list_item: {
-          rich_text: [{ type: "text", text: { content: "データベースへの自動ページ追加" } }]
-        }
-      },
-      {
-        object: "block",
-        type: "bulleted_list_item",
-        bulleted_list_item: {
-          rich_text: [{ type: "text", text: { content: "複雑なブロック構造の構築" } }]
-        }
-      },
-      {
-        object: "block",
-        type: "bulleted_list_item",
-        bulleted_list_item: {
-          rich_text: [{ type: "text", text: { content: "プロパティの自動設定" } }]
-        }
-      },
-      {
-        object: "block",
-        type: "divider",
-        divider: {}
-      },
-      {
-        object: "block",
-        type: "paragraph",
-        paragraph: {
-          rich_text: []
-        }
-      },
-      {
-        object: "block",
-        type: "toggle",
-        toggle: {
-          rich_text: [{ type: "text", text: { content: "詳細情報（クリックして展開）" } }],
-          children: [
-            {
-              object: "block",
-              type: "paragraph",
-              paragraph: {
-                rich_text: [{ type: "text", text: { content: "ここに詳細情報を記載できます。" } }]
-              }
-            },
-            {
-              object: "block",
-              type: "code",
-              code: {
-                rich_text: [{ type: "text", text: { content: "console.log('Notion API is amazing!');" } }],
-                language: "javascript"
-              }
-            }
-          ]
-        }
-      }
-    ];
+    // ユーザーにページ選択を促す
+    const selectedIndex = parseInt(await askQuestion('\n操作するページの番号を入力してください: ')) - 1;
     
-    // ページとコンテンツを一度に作成
-    console.log('新しいページとコンテンツを作成中...');
-    const newPage = await createPage(NOTION_DATABASE_ID, newPageProperties, pageContent);
-    console.log(`新しいページを作成しました: ${newPage.url}`);
-    
-    // 追加のブロックを別途追加
-    const additionalBlocks = [
-      {
-        object: "block",
-        type: "heading_2",
-        heading_2: {
-          rich_text: [{ type: "text", text: { content: "追加したブロック" } }]
-        }
-      },
-      {
-        object: "block",
-        type: "paragraph",
-        paragraph: {
-          rich_text: [
-            { 
-              type: "text", 
-              text: { 
-                content: "これらのブロックは、ページ作成後に追加されました。" 
-              } 
-            }
-          ]
-        }
-      },
-      {
-        object: "block",
-        type: "callout",
-        callout: {
-          rich_text: [{ type: "text", text: { content: "重要な情報はこのように表示できます" } }],
-          icon: {
-            emoji: "💡"
-          }
-        }
-      },
-      {
-        object: "block",
-        type: "quote",
-        quote: {
-          rich_text: [{ type: "text", text: { content: "引用文はこのように表示されます" } }]
-        }
-      },
-      {
-        object: "block",
-        type: "to_do",
-        to_do: {
-          rich_text: [{ type: "text", text: { content: "タスク1" } }],
-          checked: false
-        }
-      },
-      {
-        object: "block",
-        type: "to_do",
-        to_do: {
-          rich_text: [{ type: "text", text: { content: "タスク2" } }],
-          checked: true
-        }
-      }
-    ];
-    
-    console.log('追加のブロックを追加中...');
-    await appendBlocksToPage(newPage.id, additionalBlocks);
-    console.log('追加のブロックを追加しました');
-    
-    // 複数ページを一括作成する例
-    console.log('複数ページを一括作成中...');
-    
-    for (let i = 1; i <= 3; i++) {
-      // 各ページのプロパティをコピー
-      const pageProperties = { ...newPageProperties };
-      
-      // タイトルを変更
-      if (titleProperty) {
-        pageProperties[titleProperty] = {
-          title: [{ text: { content: `一括作成ページ #${i}` } }]
-        };
-      }
-      
-      // シンプルなコンテンツのみ追加
-      const simpleContent = [
-        {
-          object: "block",
-          type: "heading_1",
-          heading_1: {
-            rich_text: [{ type: "text", text: { content: `一括作成されたページ #${i}` } }]
-          }
-        },
-        {
-          object: "block",
-          type: "paragraph",
-          paragraph: {
-            rich_text: [
-              { 
-                type: "text", 
-                text: { 
-                  content: `これは一括作成シリーズの${i}番目のページです。` 
-                } 
-              }
-            ]
-          }
-        }
-      ];
-      
-      // ページ作成
-      const batchPage = await createPage(NOTION_DATABASE_ID, pageProperties, simpleContent);
-      console.log(`一括ページ #${i} を作成しました: ${batchPage.url}`);
+    if (isNaN(selectedIndex) || selectedIndex < 0 || selectedIndex >= pages.length) {
+      console.log('無効な選択です。');
+      rl.close();
+      return;
     }
     
-    console.log('すべての処理が完了しました！');
+    const selectedPage = pages[selectedIndex];
+    
+    // 選択したページの詳細を表示
+    console.log('\n選択したページの詳細:');
+    const pageDetails = await getPageDetails(selectedPage.id);
+    
+    // ページのプロパティを表示
+    console.log('\nプロパティ一覧:');
+    Object.entries(pageDetails.properties).forEach(([key, value]) => {
+      let displayValue = '';
+      
+      // プロパティタイプに応じた表示方法
+      switch (value.type) {
+        case 'title':
+          displayValue = value.title[0]?.plain_text || '';
+          break;
+        case 'rich_text':
+          displayValue = value.rich_text[0]?.plain_text || '';
+          break;
+        case 'select':
+          displayValue = value.select?.name || '';
+          break;
+        case 'date':
+          displayValue = value.date?.start || '';
+          break;
+        case 'checkbox':
+          displayValue = value.checkbox ? 'はい' : 'いいえ';
+          break;
+        case 'number':
+          displayValue = value.number !== null ? value.number.toString() : '';
+          break;
+        default:
+          displayValue = '(表示非対応の形式)';
+      }
+      
+      console.log(`${key}: ${displayValue}`);
+    });
+    
+    // 実行したい操作を選択
+    console.log('\n実行できる操作:');
+    console.log('1. ページを更新');
+    console.log('2. ページを削除');
+    console.log('3. キャンセル');
+    
+    const operation = await askQuestion('\n操作を選択してください (1-3): ');
+    
+    if (operation === '1') {
+      // 更新操作
+      console.log('\nページの更新を選択しました。');
+      
+      // 更新するプロパティを選択
+      console.log('\n更新可能なプロパティ:');
+      
+      const editableProperties = Object.entries(dbProperties)
+        .filter(([_, prop]) => ['title', 'rich_text', 'number', 'select', 'checkbox', 'date'].includes(prop.type))
+        .map(([key, prop]) => ({ name: key, type: prop.type }));
+      
+      editableProperties.forEach((prop, index) => {
+        console.log(`${index + 1}. ${prop.name} (タイプ: ${prop.type})`);
+      });
+      
+      const propIndex = parseInt(await askQuestion('\n更新するプロパティの番号を入力してください: ')) - 1;
+      
+      if (isNaN(propIndex) || propIndex < 0 || propIndex >= editableProperties.length) {
+        console.log('無効な選択です。');
+        rl.close();
+        return;
+      }
+      
+      const propToUpdate = editableProperties[propIndex];
+      let newValue = await askQuestion(`\n「${propToUpdate.name}」の新しい値を入力してください: `);
+      
+      // プロパティの値を更新するオブジェクトを作成
+      const updateData = {};
+      
+      // プロパティタイプに応じた更新データの構築
+      switch (propToUpdate.type) {
+        case 'title':
+          updateData[propToUpdate.name] = {
+            title: [{ text: { content: newValue } }]
+          };
+          break;
+        case 'rich_text':
+          updateData[propToUpdate.name] = {
+            rich_text: [{ text: { content: newValue } }]
+          };
+          break;
+        case 'number':
+          updateData[propToUpdate.name] = {
+            number: parseFloat(newValue)
+          };
+          break;
+        case 'checkbox':
+          updateData[propToUpdate.name] = {
+            checkbox: newValue.toLowerCase() === 'true' || newValue.toLowerCase() === 'はい'
+          };
+          break;
+        case 'select':
+          updateData[propToUpdate.name] = {
+            select: { name: newValue }
+          };
+          break;
+        case 'date':
+          updateData[propToUpdate.name] = {
+            date: { start: newValue }
+          };
+          break;
+      }
+      
+      // ページを更新
+      console.log('\nページを更新中...');
+      await updatePage(selectedPage.id, updateData);
+      console.log('ページを更新しました！');
+      
+    } else if (operation === '2') {
+      // 削除操作
+      console.log('\nページの削除を選択しました。');
+      const confirmation = await askQuestion('本当に削除しますか？ (yes/no): ');
+      
+      if (confirmation.toLowerCase() === 'yes') {
+        console.log('\nページを削除中...');
+        await deletePage(selectedPage.id);
+        console.log('ページを削除しました！');
+      } else {
+        console.log('削除をキャンセルしました。');
+      }
+      
+    } else {
+      // キャンセル
+      console.log('操作をキャンセルしました。');
+    }
+    
+    rl.close();
     
   } catch (error) {
     console.error('エラーが発生しました:', error);
+    rl.close();
   }
 }
 
