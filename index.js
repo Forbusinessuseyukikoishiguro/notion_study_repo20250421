@@ -1,24 +1,39 @@
 // 必要なパッケージのインポート
-require('dotenv').config(); // 環境変数を読み込む
-const axios = require('axios'); // HTTP通信ライブラリ
-const fs = require('fs').promises; // ファイル操作用
+require('dotenv').config(); // 環境変数を読み込むための設定
+const axios = require('axios'); // HTTP通信を行うためのライブラリ
+const readline = require('readline'); // コマンドラインでの対話操作のためのモジュール
 
 // Notion APIの設定
-const NOTION_KEY = process.env.NOTION_KEY;
-const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID;
-const NOTION_API_BASE = 'https://api.notion.com/v1';
+const NOTION_KEY = process.env.NOTION_KEY; // 環境変数からAPIキーを取得
+const NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID; // 環境変数からデータベースIDを取得
+const NOTION_API_BASE = 'https://api.notion.com/v1'; // NotionのAPIのベースURL
 
 // APIリクエスト用の共通設定
 const notionClient = axios.create({
-  baseURL: NOTION_API_BASE,
+  baseURL: NOTION_API_BASE, // ベースURLの設定
   headers: {
-    'Authorization': `Bearer ${NOTION_KEY}`,
-    'Content-Type': 'application/json',
-    'Notion-Version': '2022-06-28' // 最新バージョンを使用 (更新する可能性あり)
+    'Authorization': `Bearer ${NOTION_KEY}`, // 認証トークンの設定
+    'Content-Type': 'application/json', // コンテンツタイプをJSONに設定
+    'Notion-Version': '2022-06-28' // 使用するAPIのバージョン
   }
 });
 
-// エラーハンドラー関数
+// コンソールでの対話操作設定
+const rl = readline.createInterface({
+  input: process.stdin, // 標準入力
+  output: process.stdout // 標準出力
+});
+
+// ユーザーに質問を投げかけ回答を取得する関数
+function ask(question) {
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
+      resolve(answer);
+    });
+  });
+}
+
+// エラーハンドリング関数
 function handleError(error) {
   if (error.response) {
     // APIからのレスポンスがあるエラー
@@ -30,55 +45,27 @@ function handleError(error) {
     // リクエストは送信されたがレスポンスがない
     console.error('レスポンスが受信できませんでした:', error.request);
   } else {
-    // リクエスト設定時に何か問題が発生
+    // リクエスト設定時に問題が発生
     console.error('エラー:', error.message);
   }
-  console.error('エラースタック:', error.stack);
 }
 
-// データベース一覧を取得する関数 (searchエンドポイントを使用)
-async function listDatabases() {
+// データベースのプロパティ構造を取得する関数
+async function getDatabaseProperties() {
   try {
-    // 最新のAPIではsearchエンドポイントを使用してデータベースを検索する
-    const response = await notionClient.post('/search', {
-      filter: {
-        value: "database",
-        property: "object"
-      },
-      sort: {
-        direction: "ascending",
-        timestamp: "last_edited_time"
-      }
-    });
-    return response.data;
+    const response = await notionClient.get(`/databases/${NOTION_DATABASE_ID}`);
+    return response.data.properties; // データベースのプロパティ構造を返す
   } catch (error) {
     handleError(error);
     throw error;
   }
 }
 
-// 特定のデータベースの詳細を取得する関数
-async function getDatabase(databaseId) {
+// データベース内のページ一覧を取得する関数
+async function listPages() {
   try {
-    const response = await notionClient.get(`/databases/${databaseId}`);
-    return response.data;
-  } catch (error) {
-    handleError(error);
-    throw error;
-  }
-}
-
-// データベースの内容をクエリする関数 - 修正版
-async function queryDatabase(databaseId, filter = null) {
-  try {
-    // フィルターが指定されている場合のみfilterプロパティを含める
-    const requestBody = filter ? { filter } : {};
-    
-    const response = await notionClient.post(
-      `/databases/${databaseId}/query`, 
-      requestBody
-    );
-    return response.data;
+    const response = await notionClient.post(`/databases/${NOTION_DATABASE_ID}/query`);
+    return response.data.results; // ページのリストを返す
   } catch (error) {
     handleError(error);
     throw error;
@@ -86,414 +73,415 @@ async function queryDatabase(databaseId, filter = null) {
 }
 
 // 新しいページを作成する関数
-async function createPage(databaseId, properties) {
+async function createPage(properties, blocks = []) {
   try {
-    const response = await notionClient.post('/pages', {
-      parent: { database_id: databaseId },
-      properties: properties
-    });
-    return response.data;
+    const requestBody = {
+      parent: { database_id: NOTION_DATABASE_ID }, // 親データベースの指定
+      properties: properties // ページのプロパティ
+    };
+    
+    // ブロック（コンテンツ）がある場合は追加
+    if (blocks.length > 0) {
+      requestBody.children = blocks;
+    }
+    
+    const response = await notionClient.post('/pages', requestBody);
+    return response.data; // 作成されたページの情報を返す
   } catch (error) {
     handleError(error);
     throw error;
   }
 }
 
-// 既存のページを更新する関数
+// ページを更新する関数
 async function updatePage(pageId, properties) {
   try {
     const response = await notionClient.patch(`/pages/${pageId}`, {
-      properties: properties
+      properties: properties // 更新するプロパティ
     });
-    return response.data;
+    return response.data; // 更新されたページの情報を返す
   } catch (error) {
     handleError(error);
     throw error;
   }
 }
 
-// ページの詳細を取得する関数
-async function getPage(pageId) {
+// ページを削除（アーカイブ）する関数
+async function deletePage(pageId) {
   try {
-    const response = await notionClient.get(`/pages/${pageId}`);
-    return response.data;
+    const response = await notionClient.patch(`/pages/${pageId}`, {
+      archived: true // trueを設定するとページがアーカイブ（削除）される
+    });
+    return response.data; // 削除されたページの情報を返す
   } catch (error) {
     handleError(error);
     throw error;
   }
 }
 
-// ページのブロック（コンテンツ）を取得する関数
-async function getPageBlocks(pageId) {
-  try {
-    const response = await notionClient.get(`/blocks/${pageId}/children`);
-    return response.data;
-  } catch (error) {
-    handleError(error);
-    throw error;
-  }
-}
-
-// ページにブロックを追加する関数
-async function appendBlocksToPage(pageId, blocks) {
+// ページにブロック（コンテンツ）を追加する関数
+async function addBlocksToPage(pageId, blocks) {
   try {
     const response = await notionClient.patch(`/blocks/${pageId}/children`, {
-      children: blocks
+      children: blocks // 追加するブロックの配列
     });
-    return response.data;
+    return response.data; // 更新されたブロック情報を返す
   } catch (error) {
     handleError(error);
     throw error;
   }
 }
 
-// レスポンスデータをJSONファイルに保存する補助関数
-async function saveToFile(data, filename) {
+// メインメニューを表示して操作を選択する関数
+async function showMainMenu() {
+  console.log('\n===== Notion操作ツール =====');
+  console.log('1: ページ一覧表示');
+  console.log('2: 新規ページ作成');
+  console.log('3: ページ更新');
+  console.log('4: ページ削除');
+  console.log('0: 終了');
+  
+  const choice = await ask('\n操作を選択してください (0-4): ');
+  return choice;
+}
+
+// ページ一覧を表示する処理
+async function showPageList() {
   try {
-    await fs.writeFile(
-      filename, 
-      JSON.stringify(data, null, 2), 
-      'utf-8'
+    console.log('\nページ一覧を取得中...');
+    const pages = await listPages();
+    
+    if (pages.length === 0) {
+      console.log('ページが見つかりません。');
+      return null;
+    }
+    
+    // データベースのプロパティ構造を取得
+    const dbProperties = await getDatabaseProperties();
+    
+    // タイトルプロパティを特定
+    const titleProperty = Object.keys(dbProperties).find(
+      key => dbProperties[key].type === 'title'
     );
-    console.log(`データを ${filename} に保存しました`);
+    
+    // ページ一覧を表示
+    console.log(`\n全${pages.length}件のページ:`);
+    pages.forEach((page, index) => {
+      let title = '無題';
+      if (titleProperty && page.properties[titleProperty].title.length > 0) {
+        title = page.properties[titleProperty].title[0].plain_text;
+      }
+      console.log(`${index + 1}: ${title}`);
+    });
+    
+    return { pages, titleProperty };
   } catch (error) {
-    console.error(`ファイル保存エラー: ${error.message}`);
-    throw error;
+    console.error('ページ一覧の取得に失敗しました:', error);
+    return null;
   }
 }
 
-// メイン関数（実際の操作を行う）
-async function main() {
+// 新規ページを作成する処理
+async function handleCreatePage() {
   try {
-    // 1. データベースの検索を実行
-    console.log('データベース一覧を検索中...');
-    const searchResults = await listDatabases();
-    console.log(`${searchResults.results.length}件のデータベースが見つかりました`);
+    console.log('\n新規ページ作成:');
     
-    // 検索結果をファイルに保存
-    await saveToFile(searchResults, 'database-list.json');
+    // データベースのプロパティ構造を取得
+    const dbProperties = await getDatabaseProperties();
     
-    // データベースが見つかったか確認
-    if (searchResults.results.length === 0) {
-      console.log('アクセス可能なデータベースが見つかりませんでした。');
-      console.log('以下を確認してください:');
-      console.log('1. 統合にデータベースへのアクセス権があるか');
-      console.log('2. 統合トークンが正しいか');
+    // タイトルプロパティを特定
+    const titleProperty = Object.keys(dbProperties).find(
+      key => dbProperties[key].type === 'title'
+    );
+    
+    if (!titleProperty) {
+      console.log('データベースにタイトルプロパティが見つかりません。');
       return;
     }
     
-    // 2. 特定のデータベースの詳細を取得
-    let targetDatabaseId = NOTION_DATABASE_ID;
+    // 新規ページのプロパティを構築
+    const properties = {};
     
-    // もしデータベースIDが設定されていない場合は、最初に見つかったデータベースを使用
-    if (!targetDatabaseId && searchResults.results.length > 0) {
-      targetDatabaseId = searchResults.results[0].id;
-      console.log(`環境変数にデータベースIDが設定されていないため、最初に見つかったデータベースを使用します: ${targetDatabaseId}`);
-    }
+    // タイトル入力
+    const title = await ask('タイトルを入力してください: ');
+    properties[titleProperty] = {
+      title: [{ text: { content: title } }]
+    };
     
-    if (!targetDatabaseId) {
-      console.log('データベースIDが見つかりません。終了します。');
-      return;
-    }
-    
-    // データベースの詳細を取得
-    console.log(`データベース(${targetDatabaseId})の詳細を取得中...`);
-    const dbDetails = await getDatabase(targetDatabaseId);
-    console.log(`データベース「${dbDetails.title?.[0]?.plain_text || 'Untitled'}」の詳細を取得しました`);
-    await saveToFile(dbDetails, 'database-details.json');
-    
-    // 3. データベースの内容を取得
-    console.log(`データベース(${targetDatabaseId})の内容をクエリ中...`);
-    // filterなしで実行
-    const dbContents = await queryDatabase(targetDatabaseId);
-    console.log(`${dbContents.results.length}件のレコードを取得しました`);
-    await saveToFile(dbContents, 'database-contents.json');
-    
-    // データベースが空の場合は新しいページを追加
-    if (dbContents.results.length === 0) {
-      console.log('データベースが空のため、サンプルページを作成します');
+    // その他のプロパティを設定
+    for (const [key, prop] of Object.entries(dbProperties)) {
+      if (key === titleProperty) continue; // タイトルは既に設定済み
       
-      // データベースのプロパティ構造を確認
-      const propertySchema = dbDetails.properties;
-      
-      // 動的にプロパティを構築（データベースの構造に合わせる）
-      const newPageProperties = {};
-      
-      // タイトルプロパティを見つける
-      const titleProperty = Object.keys(propertySchema).find(
-        key => propertySchema[key].type === 'title'
-      );
-      
-      if (titleProperty) {
-        newPageProperties[titleProperty] = {
-          title: [{ text: { content: "NotionAPIからのサンプルページ" } }]
-        };
-      }
-      
-      // セレクトプロパティがあれば設定
-      Object.keys(propertySchema).forEach(key => {
-        const prop = propertySchema[key];
-        if (prop.type === 'select' && prop.select.options.length > 0) {
-          newPageProperties[key] = {
-            select: { name: prop.select.options[0].name }
-          };
-        } else if (prop.type === 'date') {
-          // 日付プロパティがあれば現在の日付を設定
-          const today = new Date().toISOString().split('T')[0];
-          newPageProperties[key] = {
-            date: { start: today }
-          };
-        } else if (prop.type === 'rich_text' && key !== titleProperty) {
-          // リッチテキストプロパティがあれば設定
-          newPageProperties[key] = {
-            rich_text: [{ text: { content: "NotionAPIからのサンプルテキスト" } }]
-          };
+      // テキスト、数値、日付、セレクトなど、よく使われるプロパティタイプに対応
+      if (['rich_text', 'number', 'date', 'select', 'checkbox'].includes(prop.type)) {
+        console.log(`\n${key} (${prop.type}):`);
+        const value = await ask('値を入力してください (スキップする場合は空欄): ');
+        
+        if (value.trim() === '') continue; // 空欄の場合はスキップ
+        
+        switch (prop.type) {
+          case 'rich_text':
+            properties[key] = {
+              rich_text: [{ text: { content: value } }]
+            };
+            break;
+          case 'number':
+            properties[key] = {
+              number: parseFloat(value)
+            };
+            break;
+          case 'date':
+            properties[key] = {
+              date: { start: value }
+            };
+            break;
+          case 'select':
+            properties[key] = {
+              select: { name: value }
+            };
+            break;
+          case 'checkbox':
+            properties[key] = {
+              checkbox: value.toLowerCase() === 'true' || 
+                       value.toLowerCase() === 'yes' || 
+                       value.toLowerCase() === 'はい'
+            };
+            break;
         }
-      });
-      
-      console.log('新しいページを作成中...');
-      const newPage = await createPage(targetDatabaseId, newPageProperties);
-      console.log('新しいページを作成しました:', newPage.id);
-      await saveToFile(newPage, 'new-page.json');
-      
-      // 4. ページにコンテンツブロックを追加
-      console.log('ページにブロックを追加中...');
-      const blocks = [
-        {
-          object: "block",
-          type: "heading_2",
-          heading_2: {
-            rich_text: [{ type: "text", text: { content: "NotionAPIで作成したページ" } }]
-          }
-        },
+      }
+    }
+    
+    // ページコンテンツを追加するか確認
+    const addContent = await ask('\nページにコンテンツを追加しますか？ (yes/no): ');
+    
+    let blocks = [];
+    if (addContent.toLowerCase() === 'yes' || addContent.toLowerCase() === 'y') {
+      // シンプルな段落を追加
+      const content = await ask('コンテンツを入力してください: ');
+      blocks = [
         {
           object: "block",
           type: "paragraph",
           paragraph: {
-            rich_text: [
-              { 
-                type: "text", 
-                text: { 
-                  content: "このページはNotionのAPIを使って自動的に作成されました。" 
-                } 
-              }
-            ]
+            rich_text: [{ type: "text", text: { content } }]
           }
-        },
+        }
+      ];
+    }
+    
+    // ページ作成実行
+    console.log('\nページを作成中...');
+    const newPage = await createPage(properties, blocks);
+    console.log(`ページを作成しました。URL: ${newPage.url}`);
+    
+  } catch (error) {
+    console.error('ページ作成に失敗しました:', error);
+  }
+}
+
+// ページを更新する処理
+async function handleUpdatePage() {
+  try {
+    console.log('\nページ更新:');
+    
+    // ページ一覧を表示
+    const result = await showPageList();
+    if (!result) return;
+    
+    const { pages, titleProperty } = result;
+    
+    // 更新するページを選択
+    const pageIndex = parseInt(await ask('\n更新するページの番号を選択してください: ')) - 1;
+    
+    if (isNaN(pageIndex) || pageIndex < 0 || pageIndex >= pages.length) {
+      console.log('無効な選択です。');
+      return;
+    }
+    
+    const selectedPage = pages[pageIndex];
+    
+    // データベースのプロパティ構造を取得
+    const dbProperties = await getDatabaseProperties();
+    
+    // 更新するプロパティを構築
+    const properties = {};
+    
+    // 更新可能なプロパティを表示
+    console.log('\n更新可能なプロパティ:');
+    Object.entries(dbProperties).forEach(([key, prop], index) => {
+      console.log(`${index + 1}: ${key} (${prop.type})`);
+    });
+    
+    // 更新するプロパティを選択
+    const propIndex = parseInt(await ask('\n更新するプロパティの番号を選択してください: ')) - 1;
+    
+    if (isNaN(propIndex) || propIndex < 0 || propIndex >= Object.keys(dbProperties).length) {
+      console.log('無効な選択です。');
+      return;
+    }
+    
+    const propKey = Object.keys(dbProperties)[propIndex];
+    const propType = dbProperties[propKey].type;
+    
+    // 新しい値を入力
+    const newValue = await ask(`${propKey}の新しい値を入力してください: `);
+    
+    // プロパティタイプに応じた値の設定
+    switch (propType) {
+      case 'title':
+        properties[propKey] = {
+          title: [{ text: { content: newValue } }]
+        };
+        break;
+      case 'rich_text':
+        properties[propKey] = {
+          rich_text: [{ text: { content: newValue } }]
+        };
+        break;
+      case 'number':
+        properties[propKey] = {
+          number: parseFloat(newValue)
+        };
+        break;
+      case 'date':
+        properties[propKey] = {
+          date: { start: newValue }
+        };
+        break;
+      case 'select':
+        properties[propKey] = {
+          select: { name: newValue }
+        };
+        break;
+      case 'checkbox':
+        properties[propKey] = {
+          checkbox: newValue.toLowerCase() === 'true' || 
+                   newValue.toLowerCase() === 'yes' || 
+                   newValue.toLowerCase() === 'はい'
+        };
+        break;
+      default:
+        console.log(`このプロパティタイプ (${propType}) はサポートされていません。`);
+        return;
+    }
+    
+    // ページ更新実行
+    console.log('\nページを更新中...');
+    await updatePage(selectedPage.id, properties);
+    console.log('ページを更新しました。');
+    
+    // ページのコンテンツ（ブロック）を追加するか確認
+    const addBlocks = await ask('\nページに新しいコンテンツを追加しますか？ (yes/no): ');
+    
+    if (addBlocks.toLowerCase() === 'yes' || addBlocks.toLowerCase() === 'y') {
+      const blockContent = await ask('追加するコンテンツを入力してください: ');
+      
+      const blocks = [
         {
           object: "block",
-          type: "bulleted_list_item",
-          bulleted_list_item: {
-            rich_text: [{ type: "text", text: { content: "データの自動追加" } }]
-          }
-        },
-        {
-          object: "block",
-          type: "bulleted_list_item",
-          bulleted_list_item: {
-            rich_text: [{ type: "text", text: { content: "ワークフロー自動化" } }]
-          }
-        },
-        {
-          object: "block",
-          type: "bulleted_list_item",
-          bulleted_list_item: {
-            rich_text: [{ type: "text", text: { content: "外部アプリとの連携" } }]
+          type: "paragraph",
+          paragraph: {
+            rich_text: [{ type: "text", text: { content: blockContent } }]
           }
         }
       ];
       
-      const updatedBlocks = await appendBlocksToPage(newPage.id, blocks);
-      console.log('ブロックを追加しました');
-      await saveToFile(updatedBlocks, 'blocks-added.json');
-      
-      // 5. ページのプロパティを更新
-      console.log('ページプロパティを更新中...');
-      
-      // 更新するプロパティを準備（データベース構造に応じて適宜変更）
-      const updateProperties = {};
-      
-      // セレクトプロパティがあれば2番目の選択肢に更新
-      Object.keys(propertySchema).forEach(key => {
-        const prop = propertySchema[key];
-        if (prop.type === 'select' && prop.select.options.length > 1) {
-          updateProperties[key] = {
-            select: { name: prop.select.options[1].name }
-          };
-        }
-      });
-      
-      // 更新するプロパティがあれば実行
-      if (Object.keys(updateProperties).length > 0) {
-        const updatedPage = await updatePage(newPage.id, updateProperties);
-        console.log('ページプロパティを更新しました');
-        await saveToFile(updatedPage, 'updated-page.json');
-      } else {
-        console.log('更新するプロパティが見つかりませんでした');
-      }
-    } else {
-      console.log('データベースに既存のページがあります。最初のページを表示します:');
-      const firstPage = dbContents.results[0];
-      console.log(`ページID: ${firstPage.id}`);
-      
-      // ページの詳細を取得
-      console.log('ページの詳細を取得中...');
-      const pageDetails = await getPage(firstPage.id);
-      console.log('ページの詳細を取得しました');
-      await saveToFile(pageDetails, 'page-details.json');
-      
-      // ページのブロックを取得
-      console.log('ページのブロック（コンテンツ）を取得中...');
-      const pageBlocks = await getPageBlocks(firstPage.id);
-      console.log(`${pageBlocks.results.length}件のブロックを取得しました`);
-      await saveToFile(pageBlocks, 'page-blocks.json');
+      console.log('\nコンテンツを追加中...');
+      await addBlocksToPage(selectedPage.id, blocks);
+      console.log('コンテンツを追加しました。');
     }
     
-    // 処理完了前にデータベース内容を見やすく表示
-    await displayDatabaseContents();
-    
-    console.log('処理が完了しました');
   } catch (error) {
-    console.error('エラーが発生しました:', error);
+    console.error('ページ更新に失敗しました:', error);
   }
 }
 
-// メイン関数を実行
-main();
-
-// データベースの内容を読みやすく表示する関数
-async function displayDatabaseContents() {
-    try {
-      // ファイルから内容を読み込む
-      const fileContent = await fs.readFile('database-contents.json', 'utf-8');
-      const data = JSON.parse(fileContent);
-      
-      console.log('\n=========================================');
-      console.log(`データベース内容のサマリー (${data.results.length}件のレコード)`);
-      console.log('=========================================\n');
-      
-      // 各レコードの内容を表示
-      data.results.forEach((record, index) => {
-        console.log(`【レコード ${index + 1}】`);
-        
-        // タイトルを探す
-        const titleProp = Object.entries(record.properties).find(
-          ([_, prop]) => prop.type === 'title'
-        );
-        
-        if (titleProp) {
-          const [propName, propValue] = titleProp;
-          const title = propValue.title[0]?.plain_text || '無題';
-          console.log(`■ ${propName}: ${title}`);
-        }
-        
-        // その他のプロパティを表示
-        Object.entries(record.properties).forEach(([propName, propValue]) => {
-          if (propValue.type !== 'title') {
-            let displayValue = '';
-
-            // 修正されたプロパティタイプに応じた表示方法
-            switch (propValue.type) {
-              case 'title':
-                displayValue = propValue.title[0]?.plain_text || '';
-                break;
-              case 'rich_text':
-                displayValue = propValue.rich_text[0]?.plain_text || '';
-                break;
-              case 'select':
-                displayValue = propValue.select?.name || '';
-                break;
-              case 'multi_select':
-                displayValue = propValue.multi_select.map(item => item.name).join('; ');
-                break;
-              case 'date':
-                displayValue = propValue.date?.start || '';
-                break;
-              case 'checkbox':
-                displayValue = propValue.checkbox ? 'TRUE' : 'FALSE';
-                break;
-              case 'number':
-                displayValue = propValue.number !== null ? propValue.number.toString() : '';
-                break;
-              default:
-                displayValue = '';
-            }
-            
-            console.log(`□ ${propName}: ${displayValue}`);
-          }
-        });
-        
-        // ページURL
-        console.log(`□ URL: ${record.url}`);
-        console.log('----------------------------------------\n');
-      });
-      
-      // データベースの内容をCSV形式でも保存
-      await exportToCSV(data);
-      
-    } catch (error) {
-      console.error('データベース内容の表示エラー:', error);
+// ページを削除する処理
+async function handleDeletePage() {
+  try {
+    console.log('\nページ削除:');
+    
+    // ページ一覧を表示
+    const result = await showPageList();
+    if (!result) return;
+    
+    const { pages, titleProperty } = result;
+    
+    // 削除するページを選択
+    const pageIndex = parseInt(await ask('\n削除するページの番号を選択してください: ')) - 1;
+    
+    if (isNaN(pageIndex) || pageIndex < 0 || pageIndex >= pages.length) {
+      console.log('無効な選択です。');
+      return;
     }
+    
+    const selectedPage = pages[pageIndex];
+    let title = '無題';
+    if (titleProperty && selectedPage.properties[titleProperty].title.length > 0) {
+      title = selectedPage.properties[titleProperty].title[0].plain_text;
+    }
+    
+    // 削除確認
+    const confirm = await ask(`\n「${title}」を削除しますか？ この操作は元に戻せません。 (yes/no): `);
+    
+    if (confirm.toLowerCase() === 'yes' || confirm.toLowerCase() === 'y') {
+      console.log('\nページを削除中...');
+      await deletePage(selectedPage.id);
+      console.log('ページを削除しました。');
+    } else {
+      console.log('削除をキャンセルしました。');
+    }
+    
+  } catch (error) {
+    console.error('ページ削除に失敗しました:', error);
   }
-  
-  // データベースの内容をCSVとしてエクスポートする関数
-  async function exportToCSV(data) {
-    try {
-      if (!data.results || data.results.length === 0) {
-        console.log('エクスポートするデータがありません');
-        return;
+}
+
+// メイン処理
+async function main() {
+  try {
+    // 環境変数のチェック
+    if (!NOTION_KEY || !NOTION_DATABASE_ID) {
+      console.error('環境変数が正しく設定されていません。');
+      console.error('.envファイルに NOTION_KEY と NOTION_DATABASE_ID を設定してください。');
+      rl.close();
+      return;
+    }
+    
+    let exit = false;
+    
+    while (!exit) {
+      const choice = await showMainMenu();
+      
+      switch (choice) {
+        case '0': // 終了
+          exit = true;
+          console.log('\nプログラムを終了します。');
+          break;
+        case '1': // ページ一覧表示
+          await showPageList();
+          break;
+        case '2': // 新規ページ作成
+          await handleCreatePage();
+          break;
+        case '3': // ページ更新
+          await handleUpdatePage();
+          break;
+        case '4': // ページ削除
+          await handleDeletePage();
+          break;
+        default:
+          console.log('無効な選択です。再度選択してください。');
       }
-      
-      // 最初のレコードからプロパティ名を取得
-      const firstRecord = data.results[0];
-      const propertyNames = Object.keys(firstRecord.properties);
-      
-      // CSVヘッダー行を作成
-      let csvContent = propertyNames.join(',') + '\n';
-      
-      // 各レコードをCSVに変換
-      data.results.forEach(record => {
-        const values = propertyNames.map(propName => {
-          const prop = record.properties[propName];
-          let value = '';
-          
-          switch (prop.type) {
-            case 'title':
-              value = prop.title[0]?.plain_text || '';
-              break;
-            case 'rich_text':
-              value = prop.rich_text[0]?.plain_text || '';
-              break;
-            case 'select':
-              value = prop.select?.name || '';
-              break;
-            case 'multi_select':
-              value = prop.multi_select.map(item => item.name).join('; ');
-              break;
-            case 'date':
-              value = prop.date?.start || '';
-              break;
-            case 'checkbox':
-              value = prop.checkbox ? 'TRUE' : 'FALSE';
-              break;
-            case 'number':
-              value = prop.number !== null ? prop.number.toString() : '';
-              break;
-            default:
-              value = '';
-          }
-          
-          // CSVで問題となる文字をエスケープ
-          return `"${value.replace(/"/g, '""')}"`;
-        });
-        
-        csvContent += values.join(',') + '\n';
-      });
-      
-      // CSVファイルに保存
-      await fs.writeFile('database-contents.csv', csvContent, 'utf-8');
-      console.log('データをCSV形式でも保存しました: database-contents.csv');
-    } catch (error) {
-      console.error('CSVエクスポートエラー:', error);
     }
+    
+    rl.close();
+    
+  } catch (error) {
+    console.error('予期せぬエラーが発生しました:', error);
+    rl.close();
   }
+}
+
+// プログラム実行
+main();
