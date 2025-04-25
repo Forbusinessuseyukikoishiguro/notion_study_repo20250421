@@ -4,8 +4,8 @@
   "cover": {
     "type": "file",
     "file": {
-      "url": "https://prod-files-secure.s3.us-west-2.amazonaws.com/46b4e1e9-b4a8-480b-a46d-aca8de816ee9/0d7521c2-a2ee-4d23-b347-9bb7c441253e/%E7%94%9F%E6%88%90AI%E7%94%BB%E5%83%8Fnote.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=ASIAZI2LB4663ODTBOIS%2F20250422%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20250422T113957Z&X-Amz-Expires=3600&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEEsaCXVzLXdlc3QtMiJIMEYCIQDZ%2BcnDUh0Ym7CPwtVXQ4PIvvM4VGSLRDCMzPm1HBlDNwIhALo0x910dOoKkXs9M9jWGGJOjBQozk%2BFY8w3NIwlbhM6KogECNT%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEQABoMNjM3NDIzMTgzODA1IgxRjm%2BJgjeolNOLTVYq3ANdk2mpUd5Fckp0AbYI0pR1OECQ2Xf%2FpGza0fbrVLd44Rpgs0tYSjZTrWWbVIQXKztGUgIGu62cR9JgRMGBv%2FC%2Ft8sYkEO4NqC9sKSOvr4S5Js4RU71TYBaJnzGjqSjJalNm4d0Re0Im5R89pDT%2F8NyY2Xc15Hlcyh6BbMpaSIyKNwIgMz7Zcoo%2FR1B1kq8wBoobJAKF2fHsENyEf32cd7PUsqEp4Lanqg4xYgoPztfV7vcRMz9HmQwX1EPYsM5fKxbW6A9GmBmHvHltVHHrxhXH7rLYDdjwDmh68OZjUDlAZTZRR%2FEzJaVVG1MhfW5iosFNYij%2FZAknzXAlRRIqqdKaL0IG%2Ficl7sRqY35lDfzJTyacyCKal99VU87lnKkRiQUJwkSN29dtrzC5eVEshMkvQ0Vh6VXLmjYVoZFplvjeIiCZP1kOLjD%2FLqTFwDFhmIP1wUoODQF0F%2Bnh9V76FazLCRDWtseSP45TLhTLEp57R5wL910MqNTiWYEJzUUwQvmApFSvar63Mn1hVC8o7ryOt1Mrx%2BFjEHZum4KZca8DjEgvGQthnjmQn8xGTPIYmlQjyenO%2BHOWXqumf0ACMWPovsPOmuNkyx1LOpb8FONarUitkrfMsDxKc1CtzDZ9J3ABjqkARdE9i6cMkQESZ62kj9EXaofOW2JIhxhKPiuccWOjl%2Bg5kBAWgHKcrZGCA9yl82AWwkTE2jYwdjfB%2FYDMr4d7O7fhcmTXzgBJdNJjHfmV%2BKKP0T8YIbQdOpQtoDk604CPw3%2BFPOISVfvf8hnhqJ%2B1ReVuj2Jp0s55s8Y25Ot8xZnCH9NI72nxCyaWuo04afMjlDf6RkR4Y7gTf0jl7njOa6Pd%2B6G&X-Amz-Signature=c4ebc28e18302d266b27530f45c41c70aaa07c7dc394c5d2499af458a412e91c&X-Amz-SignedHeaders=host&x-id=GetObject",
-      "expiry_time": "2025-04-22T12:39:57.784Z"
+      "url": "https://prod-files-secure.s3.us-west-2.amazonaws.com/46b4e1e9-b4a8-480b-a46d-aca8de816ee9/0d7521c2-a2ee-4d23-b347-9bb7c441253e/%E7%94%9F%E6%88%90AI%E7%94%BB%E5%83%8Fnote.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=ASIAZI2LB46624SS2JQ6%2F20250425%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20250425T121442Z&X-Amz-Expires=3600&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEJT%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLXdlc3QtMiJGMEQCIG5qLUtqulkiyHj%2FUw9%2F%2FTylEOwCoqa7bDZgedGAmVFLAiBD38q0SwnGd3xH57F2iSFPa%2BAgPUNLlibE5o2btgXPQir%2FAwgsEAAaDDYzNzQyMzE4MzgwNSIMzS255eIo74UKUqd6KtwDOqo%2B5ejMDqNnJS8FeDgArWBjN0RR3UezFncqqC2nLfkmEFvt3kOwbBzkEG1pZ%2FCbf5CU58%2BSgKJLM0IX5LMYC2UGtjHNH8%2Bwa46si8YGmylwLB9%2B4KWAymCuVuxVqWU13xgfy6B3ZiqFLQTtB5R1EpmCBQXYhMUBiC5%2Bfwy4MEzV1fThBe0yZX65nslo3jeCzl9dj38p8H5tXV5YjQ4IH60y6Fnp5LEISZeSlvaFfsH1TOGNqiLBb9XRqhjZebH8hp6UVMch60YiyBKjj7qj9urLnbI9Z%2Bspwj69wzcvXmV5qnu1i8LteZ%2Fnd5jfZeqAVYHOq99e7TsjlnN86fcKtH3WHC1gGQya9Iz93ZSGe6jiRm4Z52JEd5C2NVD2FF1teJV%2BDNGqem7HzYU5pj9k64UZHOIv9%2BvkWOCGJwWZFUm996OPqtUwlHm7mjzECH8hjYqZZMutWdoKJspp74JGuNiFImEK%2BcN2dk1k%2BaKnsRu%2B%2FzYuFmoA4OQzfUQuWNTiWV7m9Grft83FZcDwhuwKM5Ot9lzrztpV7ZinJZ%2BEKQ6z%2Fn9maTEud2q1Waum%2BDwlg8WvxvjFUTMnixm6Y914lDqc7gAaKXrzNSDD9rU7RxFHQ%2BnZmxFll3jEDYswieGtwAY6pgGpIOpVneS%2Fq%2F%2FTw0BhHy5Fl%2FuhPUDbdUR1%2BssTZdHeGQ69AvxLr5SP%2FgTyJD3nBWnkhYIpSFYwGNBgMCyh02x3j0ZptCc76V2KizfjDDTYe%2FDvC1IW0OkMI%2FSMvaCRciIsKZ0dVpLHJqkASdbevT3KuqXAqY7q0sRMSLwNrukazM4riYcSc5TpiH73rPE7HMTZNi4jukXOGSjNDw9uSpJF8Jd7NPld&X-Amz-Signature=1030de7c485c5b08e53d145130699ac499537dab4be74bc7fefa782f690decce&X-Amz-SignedHeaders=host&x-id=GetObject",
+      "expiry_time": "2025-04-25T13:14:42.327Z"
     }
   },
   "icon": null,
@@ -18,7 +18,7 @@
     "object": "user",
     "id": "148d872b-594c-812e-a486-0002fc2ab153"
   },
-  "last_edited_time": "2025-04-22T11:36:00.000Z",
+  "last_edited_time": "2025-04-25T12:12:00.000Z",
   "title": [
     {
       "type": "text",
@@ -41,15 +41,33 @@
   "description": [],
   "is_inline": false,
   "properties": {
-    "description": {
-      "id": "tDy%3F",
-      "name": "description",
+    "ｘｘｘ": {
+      "id": "ZwtS",
+      "name": "ｘｘｘ",
       "type": "rich_text",
       "rich_text": {}
     },
-    "期限": {
+    "due date": {
+      "id": "cY%40x",
+      "name": "due date",
+      "type": "date",
+      "date": {}
+    },
+    "完了": {
+      "id": "oGm%60",
+      "name": "完了",
+      "type": "rich_text",
+      "rich_text": {}
+    },
+    "ステータス": {
+      "id": "tDy%3F",
+      "name": "ステータス",
+      "type": "rich_text",
+      "rich_text": {}
+    },
+    "タスク名": {
       "id": "title",
-      "name": "期限",
+      "name": "タスク名",
       "type": "title",
       "title": {}
     }
@@ -62,5 +80,5 @@
   "public_url": null,
   "archived": false,
   "in_trash": false,
-  "request_id": "da39f61c-0f57-4b5c-a799-ddd3748686b9"
+  "request_id": "39979140-1865-4604-9c7c-542edb1c84b5"
 }
